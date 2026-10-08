@@ -1,4 +1,4 @@
-﻿id: EA-2026-001
+id: EA-2026-001
 class: EA
 owasp_llm: "LLM06:2025"
 cwe: [CWE-862, CWE-863]

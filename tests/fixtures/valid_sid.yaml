@@ -1,4 +1,4 @@
-﻿id: SID-2026-001
+id: SID-2026-001
 class: SID
 owasp_llm: "LLM02:2025"
 cwe: [CWE-200, CWE-639]

@@ -1,0 +1,39 @@
+rules:
+  - id: sid-rag-no-post-rerank-tenant-filter
+    languages: [python]
+    severity: HIGH
+    message: |
+      rerank() is called on a candidate set expanded by neighbor lookup
+      without a subsequent tenant filter. If the underlying vector store
+      is shared across tenants, unfiltered neighbor expansion can
+      introduce cross-tenant documents into the result.
+
+      This rule matches the retrieve() function shape in both the
+      vulnerable and the negative variant of scenario 01. The negative
+      is a documented false positive: it uses an identical retrieve()
+      but a per-tenant store, which static analysis cannot see. See
+      scenarios/tenant_leak/WHY_NOT_A_FINDING.md.
+
+      CWE-200, CWE-639. OWASP LLM02:2025.
+    metadata:
+      category: security
+      owasp:
+        - "A01:2021 - Broken Access Control"
+      cwe:
+        - "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
+        - "CWE-639: Authorization Bypass Through User-Controlled Key"
+      confidence: MEDIUM
+      references:
+        - "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+      scenario: "scenarios/tenant_leak"
+    patterns:
+      - pattern: |
+          $DOCS = [store.fetch($D) for $D in expanded]
+          ...
+          return rerank($QUERY, $DOCS)[:$K]
+      - pattern-not: |
+          $DOCS = [store.fetch($D) for $D in expanded]
+          ...
+          $DOCS = [$_ for $_ in $DOCS if $_.tenant == $TENANT]
+          ...
+          return rerank($QUERY, $DOCS)[:$K]

@@ -30,14 +30,20 @@ narrowly.
 
 ## Why the negative is not a finding
 
-`negative/app.py` is byte-for-byte identical to `vulnerable/app.py`.
-The difference is the store passed to `retrieve`: the negative runs
-against a store constructed from tenant_a documents only. When a
-deployment serves one tenant per store instance, unfiltered neighbor
-expansion cannot cross a tenant boundary.
+`negative/app.py` uses the **same `retrieve()` function** as the
+vulnerable variant: tenant-filtered initial search, unfiltered neighbor
+expansion, no post-rerank ACL. That code pattern looks like a finding
+and a naive rule would flag it.
+
+It is not a finding here because the deployment serves one tenant per
+store instance. The neighbor index contains only documents the actor is
+already authorized for, so unfiltered expansion has no cross-tenant
+documents to introduce. The only functional difference from the
+vulnerable variant is the store construction in `main()`.
 
 This becomes a finding the moment the deployment serves two tenants
-from one store, which is exactly what `vulnerable/app.py` models.
+from one store instance — which is exactly what `vulnerable/app.py`
+models.
 
 ## Verification
 

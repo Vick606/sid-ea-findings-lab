@@ -1,4 +1,4 @@
-﻿"""Tests for the canonical actor registry and its loader."""
+"""Tests for the canonical actor registry and its loader."""
 
 from pathlib import Path
 
@@ -33,9 +33,7 @@ def test_missing_required_field_rejected() -> None:
 
 def test_fixture_actor_is_in_registry() -> None:
     """Every fixture finding must use a registered actor."""
-    registered = {
-        (a.identity, a.tenant, a.purpose) for a in load_actors().values()
-    }
+    registered = {(a.identity, a.tenant, a.purpose) for a in load_actors().values()}
 
     for fixture in FIXTURES.glob("*.yaml"):
         data = yaml.safe_load(fixture.read_text(encoding="utf-8"))
@@ -45,6 +43,4 @@ def test_fixture_actor_is_in_registry() -> None:
             finding.actor.tenant,
             finding.actor.purpose,
         )
-        assert key in registered, (
-            f"{fixture.name}: actor {key} not in canonical registry"
-        )
+        assert key in registered, f"{fixture.name}: actor {key} not in canonical registry"

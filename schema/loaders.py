@@ -1,4 +1,4 @@
-﻿"""Load canonical data files from disk.
+"""Load canonical data files from disk.
 
 The schema module defines shapes; this module populates instances from
 YAML. Kept separate so schema/ stays free of I/O.
@@ -18,7 +18,4 @@ def load_actors(path: Path | None = None) -> dict[str, ActorContext]:
     source = path or DEFAULT_ACTORS_PATH
     raw = yaml.safe_load(source.read_text(encoding="utf-8")) or {}
     entries = raw.get("actors", {})
-    return {
-        name: ActorContext.model_validate(data)
-        for name, data in entries.items()
-    }
+    return {name: ActorContext.model_validate(data) for name, data in entries.items()}

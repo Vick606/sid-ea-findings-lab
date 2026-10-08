@@ -1,6 +1,7 @@
 """Structured finding annotations for LLM agent/RAG vulnerabilities."""
 
 from schema.actors import ActorContext
+from schema.loaders import load_actors
 from schema.enums import (
     Confidence,
     ProvenanceTag,

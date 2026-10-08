@@ -33,3 +33,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.pyright]
 pythonVersion = "3.14"
 typeCheckingMode = "standard"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

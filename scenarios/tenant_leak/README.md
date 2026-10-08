@@ -52,3 +52,22 @@ uv run python -m scenarios.tenant_leak.vulnerable.app
 ```
 
 Expected: two `ok` lines and one `LEAK` line.
+
+## SAST
+
+Semgrep rule: `sast/sid_rag_no_post_rerank_acl.yaml`
+
+Expected behavior against this scenario's variants:
+
+| Variant | Rule fires? | Why |
+|---|---|---|
+| `vulnerable/` | **Yes** | Code shape matches: expanded set reaches rerank unfiltered |
+| `fixed/` | No | Re-applies the tenant predicate before rerank |
+| `negative/` | **Yes** | Identical `retrieve()` — documented false positive |
+
+The negative is a false positive because static analysis cannot see
+the deployment context (per-tenant store). This is the reason the
+deterministic tests exist: only they can distinguish the two cases by
+running them. See `WHY_NOT_A_FINDING.md`.
+
+Verify:

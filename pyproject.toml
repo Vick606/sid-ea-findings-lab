@@ -1,0 +1,35 @@
+[project]
+name = "sid-ea-findings-lab"
+version = "0.1.0"
+description = "Labeled corpus of LLM agent/RAG vulnerabilities with triage-ready findings annotations"
+readme = "README.md"
+authors = [
+    { name = "Victor", email = "vickoch20@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "fastmcp>=4",
+    "langchain>=1.2.8",
+    "langchain-community>=0.4.2",
+    "numpy>=2.5.3",
+    "pydantic>=2.13.0",
+    "pyyaml>=6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pyright]
+pythonVersion = "3.14"
+typeCheckingMode = "standard"

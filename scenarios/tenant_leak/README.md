@@ -71,3 +71,4 @@ deterministic tests exist: only they can distinguish the two cases by
 running them. See `WHY_NOT_A_FINDING.md`.
 
 Verify:
+uvx semgrep --config sast/sid_rag_no_post_rerank_acl.yaml scenarios/tenant_leak/

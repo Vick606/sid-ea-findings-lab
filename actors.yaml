@@ -1,0 +1,39 @@
+﻿# Canonical actor contexts.
+#
+# Findings reference actors by name in prose and documentation. This
+# registry is the single source of truth for what each actor is
+# authorized to do. A test verifies every fixture actor matches a
+# registered entry exactly, so drift fails CI.
+
+actors:
+  tenant_a_user:
+    identity: tenant_user
+    tenant: tenant_a
+    scopes: [rag:read]
+    purpose: answer_internal_query
+    permitted_recipients: [tenant_a_members]
+    document_acl: tenant_a_only
+
+  tenant_b_user:
+    identity: tenant_user
+    tenant: tenant_b
+    scopes: [rag:read]
+    purpose: answer_internal_query
+    permitted_recipients: [tenant_b_members]
+    document_acl: tenant_b_only
+
+  tenant_a_summarizer:
+    identity: user
+    tenant: tenant_a
+    scopes: [agent:act, mail:send]
+    purpose: summarize_documents
+    permitted_recipients: [internal_domain]
+    document_acl: tenant_a_only
+
+  mcp_tool_user_a:
+    identity: service_user
+    tenant: tenant_a
+    scopes: [mcp:read]
+    purpose: agent_file_access
+    permitted_recipients: []
+    document_acl: tenant_a_only

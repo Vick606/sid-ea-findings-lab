@@ -1,0 +1,73 @@
+id: SID-2026-001
+class: SID
+owasp_llm: "LLM02:2025"
+cwe: [CWE-200, CWE-639]
+title: Cross-tenant document disclosure via re-ranker ACL bypass
+
+actor:
+  identity: tenant_user
+  tenant: tenant_a
+  scopes: [rag:read]
+  purpose: answer_internal_query
+  permitted_recipients: [tenant_a_members]
+  document_acl: tenant_a_only
+
+trust_boundaries:
+  - name: tenant_isolation
+    from_actor: tenant_a
+    to_actor: shared_vector_index
+    expected_invariant: "no tenant_b chunks returned to tenant_a"
+    violated: true
+
+flow:
+  source:
+    kind: user_query
+    location: "scenarios/tenant_leak/vulnerable/app.py:24"
+    taint: untrusted
+  propagation:
+    - step: embed
+      location: "scenarios/tenant_leak/common.py:19"
+    - step: vector_search
+      location: "scenarios/tenant_leak/common.py:79"
+      note: "tenant filter applied here"
+    - step: expand
+      location: "scenarios/tenant_leak/common.py:98"
+      note: "unfiltered neighbor expansion introduces cross-tenant documents"
+    - step: rerank
+      location: "scenarios/tenant_leak/common.py:108"
+      note: "re-ranker operates on the expanded set without re-filtering"
+  sink:
+    kind: llm_response
+    location: "scenarios/tenant_leak/vulnerable/app.py:26"
+    action: disclose_chunk_text
+
+root_cause: |
+  The tenant predicate is applied at one point (initial vector search)
+  and assumed to hold downstream. The re-ranker expands the candidate
+  set with each document's nearest neighbors from a shared index. That
+  index has no tenant predicate, so a tenant_a query surfaces tenant_b
+  documents as high-similarity neighbors. Nothing downstream re-applies
+  the tenant filter, so the leak reaches the model context.
+
+control:
+  present: [initial_search_tenant_filter]
+  missing: [post_rerank_acl_check]
+  bypass: unfiltered_neighbor_expansion
+
+severity: HIGH
+severity_rationale: |
+  Cross-tenant disclosure of internal documents. Actor is authenticated
+  but not authorized for tenant_b data. The leak is silent: no error,
+  no log, no anomaly. It reaches the model's context in the ordinary
+  course of retrieval.
+residual_risk: |
+  The fixed variant closes the re-ranker path but the shared vector
+  index remains queryable by any component with store access. Embedding
+  inversion against the index is out of scope for the agent path and
+  is tracked separately.
+
+evidence:
+  test: "scenarios/tenant_leak/tests/test_tenant_leak.py::test_vulnerable_leaks_tenant_b_doc"
+  semgrep: "sast/sid_rag_no_post_rerank_acl.yaml"
+  diff: "vulnerable/app.py:24 vs fixed/app.py:25"
+  negative: "scenarios/tenant_leak/negative/app.py"

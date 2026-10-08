@@ -1,0 +1,63 @@
+﻿id: SID-2026-001
+class: SID
+owasp_llm: "LLM02:2025"
+cwe: [CWE-200, CWE-639]
+title: Cross-tenant document disclosure via re-ranker ACL bypass
+
+actor:
+  identity: tenant_user
+  tenant: tenant_a
+  scopes: [rag:read]
+  purpose: answer_internal_query
+  permitted_recipients: [tenant_a_members]
+  document_acl: tenant_a_only
+
+trust_boundaries:
+  - name: tenant_isolation
+    from_actor: tenant_a
+    to_actor: shared_vector_index
+    expected_invariant: "no tenant_b chunks returned to tenant_a"
+    violated: true
+
+flow:
+  source:
+    kind: user_query
+    location: "app.py:31"
+    taint: untrusted
+  propagation:
+    - step: embed
+      location: "app.py:34"
+    - step: vector_search
+      location: "retriever.py:72"
+      note: "metadata filter absent"
+    - step: rerank
+      location: "reranker.py:18"
+      note: "re-fetches candidates without ACL predicate"
+  sink:
+    kind: llm_response
+    location: "app.py:44"
+    action: disclose_chunk_text
+
+root_cause: |
+  The retriever applies a tenant metadata filter during the initial
+  vector search, but the cross-encoder re-ranker re-fetches candidate
+  documents by ID without re-applying the ACL predicate.
+
+control:
+  present: [metadata_filter]
+  missing: [post_rerank_acl_check]
+  bypass: reranker_re_fetch
+
+severity: HIGH
+severity_rationale: |
+  Cross-tenant disclosure of internal documents. Actor is authenticated
+  but not authorized for tenant_b data.
+residual_risk: |
+  Fixed variant still leaks via embedding inversion if the vector index
+  is directly queryable.
+
+evidence:
+  test: "scenarios/01-tenant-leak/tests/test_tenant_leak.py::test_cross_tenant_not_returned"
+  semgrep: "sast/sid_rag_no_post_rerank_acl.yaml"
+  diff: "vulnerable/retriever.py:72 vs fixed/retriever.py:74"
+  negative: "scenarios/01-tenant-leak/negative/retriever.py"

@@ -1,0 +1,60 @@
+﻿id: EA-2026-001
+class: EA
+owasp_llm: "LLM06:2025"
+cwe: [CWE-862, CWE-863]
+title: Outbound email triggered by retrieved-document injection
+
+actor:
+  identity: user
+  tenant: tenant_a
+  scopes: [agent:act, mail:send]
+  purpose: summarize_documents
+  permitted_recipients: [internal_domain]
+  document_acl: tenant_a_only
+
+trust_boundaries:
+  - name: provenance_boundary
+    from_actor: retrieved_doc
+    to_actor: send_email_tool
+    expected_invariant: "retrieved_doc content cannot trigger external send"
+    violated: true
+
+flow:
+  source:
+    kind: retrieved_doc
+    location: "retriever.py:41"
+    taint: untrusted
+  propagation:
+    - step: prompt_injection
+      location: "agent.py:55"
+      note: "no provenance tag attached to instruction"
+    - step: tool_selection
+      location: "agent.py:62"
+  sink:
+    kind: tool_call
+    location: "tools/email.py:14"
+    action: send_email
+
+root_cause: |
+  The agent treats retrieved content and user instructions as equivalent
+  inputs for tool selection. No provenance-aware policy prevents
+  retrieved documents from selecting outbound communication tools.
+
+control:
+  present: [tool_allowlist]
+  missing: [provenance_gate_on_external_send]
+
+severity: HIGH
+severity_rationale: |
+  Outbound communication triggered by attacker-controlled retrieved
+  content. Constitutes an exfiltration channel.
+residual_risk: |
+  Fixed variant blocks retrieved-doc-sourced sends but permits them
+  when the user explicitly names the recipient. Social engineering of
+  the user remains possible.
+
+evidence:
+  test: "scenarios/03-ea-retrieved-doc-tool/tests/test_ea_provenance.py::test_retrieved_doc_cannot_send"
+  semgrep: "sast/ea_tool_no_provenance_check.yaml"
+  diff: "vulnerable/agent.py:62 vs fixed/agent.py:65"
+  negative: "scenarios/03-ea-retrieved-doc-tool/negative/agent.py"

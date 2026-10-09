@@ -7,6 +7,7 @@ from schema.enums import (
     Severity,
     SinkKind,
     SourceKind,
+    TaintLabel,
     VulnClass,
 )
 from schema.finding import (
@@ -35,6 +36,7 @@ __all__ = [
     "Severity",
     "SinkKind",
     "SourceKind",
+    "TaintLabel",
     "TrustBoundary",
     "VulnClass",
     "load_actors",

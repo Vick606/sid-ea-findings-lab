@@ -42,3 +42,9 @@ class ProvenanceTag(StrEnum):
     USER_INPUT = "user_input"
     RETRIEVED_DOC = "retrieved_doc"
     TOOL_OUTPUT = "tool_output"
+
+
+class TaintLabel(StrEnum):
+    UNTRUSTED = "untrusted"
+    SENSITIVE = "sensitive"
+    TRUSTED = "trusted"

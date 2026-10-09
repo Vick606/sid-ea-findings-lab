@@ -37,3 +37,19 @@ actors:
     purpose: agent_file_access
     permitted_recipients: []
     document_acl: tenant_a_only
+
+  tenant_a_user_noor:
+    identity: noor
+    tenant: tenant_a
+    scopes: [memory:read, memory:write]
+    purpose: personal_assistant
+    permitted_recipients: [noor]
+    document_acl: tenant_a_only
+
+  tenant_a_user_rasmus:
+    identity: rasmus
+    tenant: tenant_a
+    scopes: [memory:read, memory:write]
+    purpose: personal_assistant
+    permitted_recipients: [rasmus]
+    document_acl: tenant_a_only

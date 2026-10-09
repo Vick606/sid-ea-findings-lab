@@ -9,7 +9,7 @@ that survives the fix.
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from schema.actors import ActorContext
-from schema.enums import Severity, SinkKind, SourceKind, VulnClass
+from schema.enums import Severity, SinkKind, SourceKind, TaintLabel, VulnClass
 
 
 class TrustBoundary(BaseModel):
@@ -27,7 +27,7 @@ class FlowSource(BaseModel):
 
     kind: SourceKind
     location: str
-    taint: str
+    taint: TaintLabel
 
 
 class FlowStep(BaseModel):

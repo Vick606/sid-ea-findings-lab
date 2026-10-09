@@ -8,7 +8,7 @@ Every scenario ships a vulnerable implementation, a fixed version, and a hard ne
 
 [![License: AGPL v3 + CC BY-NC-SA 4.0](https://img.shields.io/badge/License-AGPL_v3_%2B_CC_BY--NC--SA_4.0-blue.svg)](LICENSING.md)
 [![Python 3.14+](https://img.shields.io/badge/python-3.14+-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-16_passing-brightgreen.svg)](#validation)
+[![Tests](https://img.shields.io/badge/tests-21_passing-brightgreen.svg)](#validation)
 [![OWASP LLM](https://img.shields.io/badge/OWASP_LLM-LLM02_%2F_LLM06-purple)](https://genai.owasp.org/llm-top-10/)
 [![Semgrep](https://img.shields.io/badge/semgrep-taint_mode-red)](sast/)
 
@@ -84,7 +84,7 @@ Plus `finding.yaml`, `trace.md`, `WHY_NOT_A_FINDING.md`, and a scenario README.
 | # | Scenario | Class | OWASP | Status |
 |---|---|---|---|---|
 | 01 | [Cross-tenant RAG leak](scenarios/tenant_leak/) | SID | LLM02 | ✅ Shipped |
-| 02 | Cross-user memory bleed | SID | LLM02 | Planned |
+| 02 | [Cross-user memory bleed](scenarios/memory_bleed/) | SID | LLM02 | ✅ Shipped |
 | 03 | Retrieved-doc → outbound tool call | EA | LLM06 | Planned |
 | 04 | MCP confused deputy | EA | LLM06 | Planned |
 
@@ -92,9 +92,9 @@ Plus `finding.yaml`, `trace.md`, `WHY_NOT_A_FINDING.md`, and a scenario README.
 
 A naïve non-finding differs from the vulnerable case in an obvious way. That's not a test of judgment. The negatives here share the vulnerable code **verbatim** and are safe only because of a deployment assumption.
 
-In scenario 01, the negative's `retrieve()` is byte-for-byte identical to the vulnerable variant's. A code-pattern matcher cannot tell them apart. That is documented, tested, and the reason the deterministic tests exist.
+In scenario 01, the negative's `retrieve()` is byte-for-byte identical to the vulnerable variant's. In scenario 02, the negative's `agent_turn()` is byte-for-byte identical to the vulnerable variant's. A code-pattern matcher cannot tell them apart. That is documented, tested, and the reason the deterministic tests exist.
 
-See [`WHY_NOT_A_FINDING.md`](scenarios/tenant_leak/WHY_NOT_A_FINDING.md).
+See [`scenarios/tenant_leak/WHY_NOT_A_FINDING.md`](scenarios/tenant_leak/WHY_NOT_A_FINDING.md) and [`scenarios/memory_bleed/WHY_NOT_A_FINDING.md`](scenarios/memory_bleed/WHY_NOT_A_FINDING.md).
 
 ## Why traditional taint analysis doesn't transfer
 
@@ -109,8 +109,9 @@ Semgrep rules in [`sast/`](sast/) run in taint mode and are validated against al
 | Rule | Fires on vulnerable | Fires on fixed | Fires on negative |
 |---|---|---|---|
 | [`sid_rag_no_post_rerank_acl.yaml`](sast/sid_rag_no_post_rerank_acl.yaml) | ✅ | ❌ | ✅ (documented FP) |
+| [`sid_memory_no_user_binding.yaml`](sast/sid_memory_no_user_binding.yaml) | ✅ | ❌ | ✅ (documented FP) |
 
-The rule catches **code shape**; the tests catch **deployment context**. That trade-off is exactly what a GenAI security evaluation engineer negotiates.
+The rules catch **code shape**; the tests catch **deployment context**. That trade-off is exactly what a GenAI security evaluation engineer negotiates.
 
 ## Install and test
 
@@ -119,19 +120,19 @@ Requires Python 3.14+ and [uv](https://docs.astral.sh/uv/).
 ```bash
 uv sync
 uv run pytest -v
-uv run python -m scenarios.tenant_leak.vulnerable.app   # reproduces the leak
-uv run python -m scenarios.tenant_leak.fixed.app        # no leak
+uv run python -m scenarios.tenant_leak.vulnerable.app     # reproduces scenario 01
+uv run python -m scenarios.memory_bleed.vulnerable.app    # reproduces scenario 02
 uvx semgrep --config sast/ scenarios/
 ```
 
-No Docker. No model downloads. No API keys. Tests use `FakeListChatModel` and fixed vectors.
+No Docker. No model downloads. No API keys. Tests use fixed vectors and deterministic stubs.
 
 ## Validation
 
 Every commit runs:
 
 ```bash
-uv run pytest -q              # 16 passing
+uv run pytest -q              # 21 passing
 uv run ruff check .
 uv run ruff format --check .
 uv run pyright
@@ -148,7 +149,7 @@ This is a **small, hand-built corpus**, not a benchmark.
 
 **Weak at:** scale (four scenarios, not four hundred); automation (traces are hand-written); coverage (no encoded attacks, multi-turn drift, or chained tool calls); multi-agent scenarios.
 
-**Known trade-off:** the Semgrep rule fires on the hard negative. Not a bug — SAST sees code, not deployment. A rule that stayed silent would have to encode the deployment assumption, becoming brittle in the other direction.
+**Known trade-off:** each Semgrep rule fires on the corresponding hard negative. Not a bug — SAST sees code, not deployment. A rule that stayed silent would have to encode the deployment assumption, becoming brittle in the other direction.
 
 > ⚠️ **Contains deliberately vulnerable code.** Do not deploy the `vulnerable/` variants.
 
@@ -159,7 +160,8 @@ sid-ea-findings-lab/
 ├── schema/               # Pydantic models: finding, actor, enums
 ├── actors.yaml           # Canonical actor contexts
 ├── scenarios/
-│   └── tenant_leak/
+│   ├── tenant_leak/      # scenario 01
+│   └── memory_bleed/     # scenario 02
 │       ├── vulnerable/   # the finding
 │       ├── fixed/        # one-line fix
 │       ├── negative/     # hard negative
@@ -188,12 +190,12 @@ The code is a teaching aid that should stay open. The annotated vulnerable patte
 
 ## Status
 
-Stage 2 complete — scenario 01 ships end to end. Stages 3–5 add three more scenarios. Stage 6 adds a calibration set and CI.
+Stage 3 complete — scenarios 01 and 02 ship end to end. Stages 4–5 add two more scenarios (retrieved-doc → tool call, MCP confused deputy). Stage 6 adds a calibration set and CI.
 
 ---
 
 <div align="center">
 
-**Built by [Victor](https://github.com/Vick606) — focused on GenAI security evaluation.**
+**Built with ☕ and 🐍 by [Victor](https://github.com/Vick606) for the ❤️ of LLM security 🛡️**
 
 </div>

@@ -31,14 +31,18 @@ or guesses another user's session ID reads that user's memory.
 
 ## Why the negative is not a finding
 
-`negative/app.py` calls the same `store.load(session_id)` as the
-vulnerable variant, without any user filter. The code shape looks
-identical. It is safe because the store is constructed per-user: each
-user's process only ever sees entries it wrote itself. Cross-user
-bleed cannot occur because there is no cross-user store to bleed from.
+`negative/app.py` uses the **same `agent_turn()` function** as the
+vulnerable variant: unfiltered `store.load(session_id)`, no user
+check. A code-pattern matcher cannot distinguish the two.
+
+It is not a finding here because each user operates on their own
+`MemoryStore` instance. Cross-user bleed requires a shared store;
+there is no shared store in this deployment. The only functional
+difference from the vulnerable variant is the store construction in
+`main()`.
 
 This becomes a finding the moment the deployment serves more than one
-user from a single store instance, which is exactly what the
+user from a single store instance — which is exactly what the
 vulnerable variant models.
 
 ## Verification

@@ -26,7 +26,7 @@ or guesses another user's session ID reads that user's memory.
 | Variant | Behavior |
 |---|---|
 | `vulnerable/` | Shared store, `load(session_id)` unfiltered |
-| `fixed/` | Same store, `load` result filtered by `user_id` and `tenant` |
+| `fixed/` | Same store, `load` result filtered by `user_id` |
 | `negative/` | Same unfiltered `load`, but the store is constructed per-user |
 
 ## Why the negative is not a finding

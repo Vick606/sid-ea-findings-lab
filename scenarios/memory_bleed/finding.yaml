@@ -1,0 +1,71 @@
+id: SID-2026-002
+class: SID
+owasp_llm: "LLM02:2025"
+cwe: [CWE-200, CWE-488, CWE-639]
+title: Cross-user memory disclosure via session-only memory key
+
+actor:
+  identity: rasmus
+  tenant: tenant_a
+  scopes: [memory:read, memory:write]
+  purpose: personal_assistant
+  permitted_recipients: [rasmus]
+  document_acl: tenant_a_only
+
+trust_boundaries:
+  - name: user_memory_isolation
+    from_actor: noor
+    to_actor: rasmus
+    expected_invariant: "rasmus cannot read memory written by noor, even within the same tenant"
+    violated: true
+
+flow:
+  source:
+    kind: memory
+    location: "scenarios/memory_bleed/common.py:34"
+    taint: sensitive
+  propagation:
+    - step: load
+      location: "scenarios/memory_bleed/vulnerable/app.py:30"
+      note: "store.load(session_id) has no user predicate"
+    - step: return
+      location: "scenarios/memory_bleed/vulnerable/app.py:31"
+      note: "history returned to caller without filtering"
+  sink:
+    kind: llm_response
+    location: "scenarios/memory_bleed/vulnerable/app.py:31"
+    action: disclose_memory_entry
+
+root_cause: |
+  The memory store is keyed by session_id only. A session identifier
+  is not a credential: it identifies a conversation, not an owner.
+  agent_turn() loads memory by session_id and returns it to the
+  caller without verifying that the requesting user owns the session.
+  Two users in the same tenant sharing a store instance can read each
+  other's memory by supplying the same session_id. The user-binding
+  control is absent.
+
+control:
+  present: [session_id_keying]
+  missing: [user_binding_on_memory_read]
+  bypass: session_id_as_sole_credential
+
+severity: HIGH
+severity_rationale: |
+  Cross-user disclosure within a tenant. Memory persists across turns
+  and often contains PII, credentials, prior tool outputs, and
+  business data. The actor is authenticated but not authorized for
+  the other user's data. The leak is silent: no error, no log line,
+  no anomaly.
+residual_risk: |
+  The fixed variant filters by user_id at read time, which closes the
+  direct path. It does not address session-ID guessing or replay by
+  a user who already knows the target's session_id and can craft a
+  request as themselves. Session-ID entropy and rotation are out of
+  scope for this scenario and tracked separately.
+
+evidence:
+  test: "scenarios/memory_bleed/tests/test_memory_bleed.py::test_vulnerable_leaks_noor_entry_to_rasmus"
+  semgrep: "sast/sid_memory_no_user_binding.yaml"
+  diff: "vulnerable/app.py:30 vs fixed/app.py:31"
+  negative: "scenarios/memory_bleed/negative/app.py"

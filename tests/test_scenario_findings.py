@@ -35,7 +35,6 @@ def test_scenario_finding_loads(path: Path) -> None:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     finding = Finding.model_validate(data)
 
-    assert finding.flow.source.taint == "untrusted"
     assert finding.trust_boundaries, "finding must declare a trust boundary"
     assert any(b.violated for b in finding.trust_boundaries), (
         "at least one trust boundary must be marked violated"

@@ -1,0 +1,46 @@
+rules:
+  - id: sid-memory-no-user-binding
+    languages: [python]
+    severity: HIGH
+    message: |
+      Memory is loaded by session_id and returned without a user
+      predicate. If the underlying store is shared across users, one
+      user can read memory written by another by supplying the same
+      session_id. A session identifier is not a credential.
+
+      This rule matches the agent_turn() function shape in both the
+      vulnerable and the negative variant of scenario 02. The negative
+      is a documented false positive: it uses an identical
+      agent_turn() but per-user stores, which static analysis cannot
+      see. See scenarios/memory_bleed/WHY_NOT_A_FINDING.md.
+
+      CWE-200, CWE-488, CWE-639. OWASP LLM02:2025.
+    metadata:
+      category: security
+      owasp:
+        - "A01:2021 - Broken Access Control"
+      cwe:
+        - "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
+        - "CWE-488: Exposure of Data Element to Wrong Session"
+        - "CWE-639: Authorization Bypass Through User-Controlled Key"
+      confidence: MEDIUM
+      references:
+        - "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+      scenario: "scenarios/memory_bleed"
+    patterns:
+      - pattern: |
+          $HISTORY = $STORE.load(...)
+          ...
+          return $HISTORY
+      - pattern-not: |
+          $HISTORY = $STORE.load(...)
+          ...
+          $HISTORY = [$_ for $_ in $HISTORY if $_.user_id == $USER_ID]
+          ...
+          return $HISTORY
+      - pattern-not: |
+          $HISTORY = $STORE.load(...)
+          ...
+          $HISTORY = [$_ for $_ in $HISTORY if $_["user_id"] == $USER_ID]
+          ...
+          return $HISTORY

@@ -1,0 +1,7 @@
+# Default owner
+* @Vick606
+
+# Security-sensitive paths
+/schema/ @Vick606
+/sast/ @Vick606
+/actors.yaml @Vick606

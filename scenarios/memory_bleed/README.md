@@ -49,3 +49,22 @@ vulnerable variant models.
 uv run python -m scenarios.memory_bleed.vulnerable.app
 
 Expected: one LEAK line — Rasmus reads Noor's stored SSN.
+
+## SAST
+
+Semgrep rule: `sast/ea_tool_no_provenance_check.yaml`
+
+Expected behavior against this scenario's variants:
+
+| Variant | Rule fires? | Why |
+|---|---|---|
+| `vulnerable/` | **Yes** | Retrieved-doc instructions reach the tool unfiltered |
+| `fixed/` | No | Filters `source == "user_input"` before tool selection |
+| `negative/` | **Yes** | Identical `agent_turn()` — documented false positive |
+
+The negative is a false positive because static analysis cannot see
+the tool's recipient allowlist. The deterministic tests are what
+distinguish the two cases. See `WHY_NOT_A_FINDING.md`.
+
+Verify:
+uvx semgrep --config sast/ea_tool_no_provenance_check.yaml scenarios/agency_retrieved_doc/

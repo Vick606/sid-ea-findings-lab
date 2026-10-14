@@ -1,0 +1,76 @@
+id: EA-2026-001
+class: EA
+owasp_llm: "LLM06:2025"
+cwe: [CWE-863, CWE-862, CWE-346]
+title: Outbound email triggered by instruction embedded in a retrieved document
+
+actor:
+  identity: user
+  tenant: tenant_a
+  scopes: [agent:act, mail:send]
+  purpose: share_summaries
+  permitted_recipients: [user_designated]
+  document_acl: tenant_a_only
+
+trust_boundaries:
+  - name: provenance_boundary
+    from_actor: retrieved_doc
+    to_actor: send_email_tool
+    expected_invariant: "retrieved content cannot select an outbound communication tool"
+    violated: true
+
+flow:
+  source:
+    kind: retrieved_doc
+    location: "scenarios/agency_retrieved_doc/common.py:99"
+    taint: untrusted
+  propagation:
+    - step: extract
+      location: "scenarios/agency_retrieved_doc/vulnerable/app.py:36"
+      note: "instruction extracted from retrieved text, tagged source=retrieved_doc"
+    - step: merge
+      location: "scenarios/agency_retrieved_doc/vulnerable/app.py:37"
+      note: "merged into the same list as user instructions"
+    - step: select
+      location: "scenarios/agency_retrieved_doc/vulnerable/app.py:40"
+      note: "source field never consulted"
+  sink:
+    kind: tool_call
+    location: "scenarios/agency_retrieved_doc/vulnerable/app.py:41"
+    action: send_email
+
+root_cause: |
+  Instructions are extracted from the user message and from every
+  retrieved document, merged into a single list, and executed without
+  the source field being consulted. The distinction between user
+  intent and retrieved content is representable in the data but never
+  used. The provenance control is absent, so retrieved content
+  selects an outbound communication tool with the same authority as
+  the user.
+
+control:
+  present: [instruction_source_tag]
+  missing: [provenance_gate_before_tool_selection]
+  bypass: source_field_ignored
+
+severity: HIGH
+severity_rationale: |
+  Outbound communication triggered by attacker-controlled retrieved
+  content. Constitutes an exfiltration channel for any data the agent
+  can see. The user's intent was to summarize notes; the effect was an
+  email to an address the user never named.
+residual_risk: |
+  The fixed variant drops retrieved-doc instructions entirely. That
+  closes this path but is coarser than necessary: some actions (e.g.
+  logging, read-only lookups) could legitimately be sourced from
+  retrieval under a narrower policy. A per-tool, per-source policy
+  matrix is the natural next step and is out of scope here. Indirect
+  injection through a document the user *did* name for forwarding is
+  also out of scope; the finding is about provenance, not content
+  trust.
+
+evidence:
+  test: "scenarios/agency_retrieved_doc/tests/test_agency_retrieved_doc.py::test_vulnerable_sends_to_attacker"
+  semgrep: "sast/ea_tool_no_provenance_check.yaml"
+  diff: "vulnerable/app.py:39 vs fixed/app.py:40"
+  negative: "scenarios/agency_retrieved_doc/negative/app.py"

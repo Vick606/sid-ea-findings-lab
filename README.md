@@ -4,11 +4,11 @@
 
 **A labeled corpus of LLM agent and RAG vulnerabilities where the deliverable is a structured finding, not a benchmark score.**
 
-Every scenario ships a vulnerable implementation, a fixed version, and a hard negative that looks like a finding but isn't — traced, annotated, tested, and explained.
+Every scenario ships a vulnerable implementation, a fixed version, and a hard negative that looks like a finding but is not. Each is traced, annotated, tested, and explained.
 
 [![License: AGPL v3 + CC BY-NC-SA 4.0](https://img.shields.io/badge/License-AGPL_v3_%2B_CC_BY--NC--SA_4.0-blue.svg)](LICENSING.md)
 [![Python 3.14+](https://img.shields.io/badge/python-3.14+-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-21_passing-brightgreen.svg)](#validation)
+[![Tests](https://img.shields.io/badge/tests-26_passing-brightgreen.svg)](#validation)
 [![OWASP LLM](https://img.shields.io/badge/OWASP_LLM-LLM02_%2F_LLM06-purple)](https://genai.owasp.org/llm-top-10/)
 [![Semgrep](https://img.shields.io/badge/semgrep-taint_mode-red)](sast/)
 
@@ -18,9 +18,9 @@ Every scenario ships a vulnerable implementation, a fixed version, and a hard ne
 
 ## The gap
 
-Existing LLM security benchmarks — [PrivacyLens](https://arxiv.org/abs/2406.18918), CIMemories, POLAR-Bench, AgentSecBench — measure **behavior** and report leak rates or robustness scores.
+Existing LLM security benchmarks (PrivacyLens, CIMemories, POLAR-Bench, AgentSecBench) measure **behavior** and report leak rates or robustness scores.
 
-None of them ship a **triage-ready finding**. They answer *"did the agent misbehave?"*. They don't answer: what was the root cause? Which control was missing? Who was the actor? What is the residual risk? How do I write a SAST rule that discriminates the vulnerable case from the safe one — and what do I do when it fires on a non-finding?
+None of them ship a **triage-ready finding**. They answer *"did the agent misbehave?"*. They don't answer: what was the root cause? Which control was missing? Who was the actor? What is the residual risk? How do I write a SAST rule that discriminates the vulnerable case from the safe one, and what do I do when it fires on a non-finding?
 
 This repository ships that artifact.
 
@@ -77,7 +77,7 @@ Three variants with **minimal security-relevant differences**:
 |---|---|
 | `vulnerable/` | The finding. Reproducible leak or impermissible action. |
 | `fixed/` | The one-line change that closes the finding. |
-| `negative/` | **Hard negative** — shares the vulnerable code shape, safe by deployment context. |
+| `negative/` | **Hard negative**. Shares the vulnerable code shape, safe by deployment context. |
 
 Plus `finding.yaml`, `trace.md`, `WHY_NOT_A_FINDING.md`, and a scenario README.
 
@@ -85,20 +85,20 @@ Plus `finding.yaml`, `trace.md`, `WHY_NOT_A_FINDING.md`, and a scenario README.
 |---|---|---|---|---|
 | 01 | [Cross-tenant RAG leak](scenarios/tenant_leak/) | SID | LLM02 | ✅ Shipped |
 | 02 | [Cross-user memory bleed](scenarios/memory_bleed/) | SID | LLM02 | ✅ Shipped |
-| 03 | Retrieved-doc → outbound tool call | EA | LLM06 | Planned |
+| 03 | [Retrieved-doc to outbound tool call](scenarios/agency_retrieved_doc/) | EA | LLM06 | ✅ Shipped |
 | 04 | MCP confused deputy | EA | LLM06 | Planned |
 
 ## Why the hard negatives matter
 
-A naïve non-finding differs from the vulnerable case in an obvious way. That's not a test of judgment. The negatives here share the vulnerable code **verbatim** and are safe only because of a deployment assumption.
+A naive non-finding differs from the vulnerable case in an obvious way. That is not a test of judgment. The negatives here share the vulnerable code **verbatim** and are safe only because of a deployment assumption.
 
-In scenario 01, the negative's `retrieve()` is byte-for-byte identical to the vulnerable variant's. In scenario 02, the negative's `agent_turn()` is byte-for-byte identical to the vulnerable variant's. A code-pattern matcher cannot tell them apart. That is documented, tested, and the reason the deterministic tests exist.
+In scenario 01, the negative's `retrieve()` is byte-for-byte identical to the vulnerable variant's. In scenario 02, the negative's `agent_turn()` is byte-for-byte identical to the vulnerable variant's. In scenario 03, the same is true of `agent_turn()`. A code-pattern matcher cannot tell them apart. That is documented, tested, and the reason the deterministic tests exist.
 
-See [`scenarios/tenant_leak/WHY_NOT_A_FINDING.md`](scenarios/tenant_leak/WHY_NOT_A_FINDING.md) and [`scenarios/memory_bleed/WHY_NOT_A_FINDING.md`](scenarios/memory_bleed/WHY_NOT_A_FINDING.md).
+See [`WHY_NOT_A_FINDING.md`](scenarios/tenant_leak/WHY_NOT_A_FINDING.md) in scenarios [01](scenarios/tenant_leak/WHY_NOT_A_FINDING.md), [02](scenarios/memory_bleed/WHY_NOT_A_FINDING.md), and [03](scenarios/agency_retrieved_doc/WHY_NOT_A_FINDING.md).
 
 ## Why traditional taint analysis doesn't transfer
 
-Classical taint analysis assumes deterministic dataflow through program memory. LLM agents propagate data *inside the model's reasoning* — no memory address, no copy instruction, sampling-dependent. Taint across that boundary is semantic, not structural.
+Classical taint analysis assumes deterministic dataflow through program memory. LLM agents propagate data *inside the model's reasoning*: no memory address, no copy instruction, sampling-dependent. Taint across that boundary is semantic, not structural.
 
 This project doesn't automate that analysis. It **records the trace by hand** for each finding, in a form a reviewer can audit and disagree with. The `flow` block is the analyst's claim; the deterministic tests pin it to behavior.
 
@@ -110,6 +110,7 @@ Semgrep rules in [`sast/`](sast/) run in taint mode and are validated against al
 |---|---|---|---|
 | [`sid_rag_no_post_rerank_acl.yaml`](sast/sid_rag_no_post_rerank_acl.yaml) | ✅ | ❌ | ✅ (documented FP) |
 | [`sid_memory_no_user_binding.yaml`](sast/sid_memory_no_user_binding.yaml) | ✅ | ❌ | ✅ (documented FP) |
+| [`ea_tool_no_provenance_check.yaml`](sast/ea_tool_no_provenance_check.yaml) | ✅ | ❌ | ✅ (documented FP) |
 
 The rules catch **code shape**; the tests catch **deployment context**. That trade-off is exactly what a GenAI security evaluation engineer negotiates.
 
@@ -120,8 +121,9 @@ Requires Python 3.14+ and [uv](https://docs.astral.sh/uv/).
 ```bash
 uv sync
 uv run pytest -v
-uv run python -m scenarios.tenant_leak.vulnerable.app     # reproduces scenario 01
-uv run python -m scenarios.memory_bleed.vulnerable.app    # reproduces scenario 02
+uv run python -m scenarios.tenant_leak.vulnerable.app             # reproduces scenario 01
+uv run python -m scenarios.memory_bleed.vulnerable.app            # reproduces scenario 02
+uv run python -m scenarios.agency_retrieved_doc.vulnerable.app    # reproduces scenario 03
 uvx semgrep --config sast/ scenarios/
 ```
 
@@ -132,7 +134,7 @@ No Docker. No model downloads. No API keys. Tests use fixed vectors and determin
 Every commit runs:
 
 ```bash
-uv run pytest -q              # 21 passing
+uv run pytest -q              # 26 passing
 uv run ruff check .
 uv run ruff format --check .
 uv run pyright
@@ -149,7 +151,7 @@ This is a **small, hand-built corpus**, not a benchmark.
 
 **Weak at:** scale (four scenarios, not four hundred); automation (traces are hand-written); coverage (no encoded attacks, multi-turn drift, or chained tool calls); multi-agent scenarios.
 
-**Known trade-off:** each Semgrep rule fires on the corresponding hard negative. Not a bug — SAST sees code, not deployment. A rule that stayed silent would have to encode the deployment assumption, becoming brittle in the other direction.
+**Known trade-off:** each Semgrep rule fires on the corresponding hard negative. Not a bug. SAST sees code, not deployment. A rule that stayed silent would have to encode the deployment assumption, becoming brittle in the other direction.
 
 > ⚠️ **Contains deliberately vulnerable code.** Do not deploy the `vulnerable/` variants.
 
@@ -157,24 +159,25 @@ This is a **small, hand-built corpus**, not a benchmark.
 
 ```
 sid-ea-findings-lab/
-├── schema/               # Pydantic models: finding, actor, enums
-├── actors.yaml           # Canonical actor contexts
+├── schema/                    # Pydantic models: finding, actor, enums
+├── actors.yaml                # Canonical actor contexts
 ├── scenarios/
-│   ├── tenant_leak/      # scenario 01
-│   └── memory_bleed/     # scenario 02
-│       ├── vulnerable/   # the finding
-│       ├── fixed/        # one-line fix
-│       ├── negative/     # hard negative
+│   ├── tenant_leak/           # scenario 01
+│   ├── memory_bleed/          # scenario 02
+│   └── agency_retrieved_doc/  # scenario 03
+│       ├── vulnerable/        # the finding
+│       ├── fixed/             # one-line fix
+│       ├── negative/          # hard negative
 │       ├── tests/
 │       ├── finding.yaml
 │       ├── trace.md
 │       ├── WHY_NOT_A_FINDING.md
 │       └── README.md
-├── sast/                 # Semgrep rules
-├── tests/                # schema + corpus validation
+├── sast/                      # Semgrep rules
+├── tests/                     # schema + corpus validation
 ├── LICENSING.md
-├── LICENSE               # AGPL-3.0-or-later (code)
-└── LICENSE-CORPUS        # CC BY-NC-SA 4.0 (findings, docs)
+├── LICENSE                    # AGPL-3.0-or-later (code)
+└── LICENSE-CORPUS             # CC BY-NC-SA 4.0 (findings, docs)
 ```
 
 ## License
@@ -190,7 +193,7 @@ The code is a teaching aid that should stay open. The annotated vulnerable patte
 
 ## Status
 
-Stage 3 complete — scenarios 01 and 02 ship end to end. Stages 4–5 add two more scenarios (retrieved-doc → tool call, MCP confused deputy). Stage 6 adds a calibration set and CI.
+Stage 4 complete. Scenarios 01, 02, and 03 ship end to end. Stage 5 adds scenario 04 (MCP confused deputy). Stage 6 adds a calibration set and CI.
 
 ---
 

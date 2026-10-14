@@ -1,0 +1,49 @@
+rules:
+  - id: ea-tool-no-provenance-check
+    languages: [python]
+    severity: HIGH
+    message: |
+      Instructions collected from retrieved documents are passed to a
+      tool without checking their provenance. If the tool performs an
+      outbound or state-changing action, retrieved content can select
+      that action with the same authority as the user.
+
+      This rule matches the agent_turn() function shape in both the
+      vulnerable and the negative variant of scenario 03. The negative
+      is a documented false positive: it uses an identical agent_turn()
+      but an EmailTool constructed with a recipient allowlist, which
+      static analysis cannot see. See
+      scenarios/agency_retrieved_doc/WHY_NOT_A_FINDING.md.
+
+      CWE-862, CWE-863, CWE-346. OWASP LLM06:2025.
+    metadata:
+      category: security
+      owasp:
+        - "A01:2021 - Broken Access Control"
+      cwe:
+        - "CWE-862: Missing Authorization"
+        - "CWE-863: Incorrect Authorization"
+        - "CWE-346: Origin Validation Error"
+      confidence: MEDIUM
+      references:
+        - "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+      scenario: "scenarios/agency_retrieved_doc"
+    patterns:
+      - pattern: |
+          $INSTR = extract_instructions(...)
+          ...
+          $INSTR.extend(extract_instructions(..., source="retrieved_doc"))
+          ...
+          for $I in $INSTR:
+              ...
+              $TOOL.send(...)
+      - pattern-not: |
+          $INSTR = extract_instructions(...)
+          ...
+          $INSTR.extend(extract_instructions(..., source="retrieved_doc"))
+          ...
+          $INSTR = [$_ for $_ in $INSTR if $_.source == "user_input"]
+          ...
+          for $I in $INSTR:
+              ...
+              $TOOL.send(...)

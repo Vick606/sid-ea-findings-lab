@@ -61,7 +61,8 @@ def extract_instructions(text: str, source: str) -> list[Instruction]:
     match = _INSTRUCTION_RE.search(text)
     if not match:
         return []
-    return [Instruction(action="send_email", recipient=match.group(1), source=source)]
+    recipient = match.group(1).rstrip(".,;!?")
+    return [Instruction(action="send_email", recipient=recipient, source=source)]
 
 
 # Corpus

@@ -30,7 +30,7 @@ are indistinguishable at the point where the tool is chosen.
 | Variant | Behavior |
 |---|---|
 | `vulnerable/` | Unfiltered instruction collection, permissive email tool |
-| `fixed/` | Same collection, but retrieved-doc instructions are dropped before tool selection |
+| `fixed/` | One-line filter: retrieved-doc instructions dropped before tool selection |
 | `negative/` | Same unfiltered code as vulnerable, but the email tool has a recipient allowlist |
 
 ## Why the negative is not a finding

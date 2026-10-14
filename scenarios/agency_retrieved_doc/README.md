@@ -36,18 +36,23 @@ are indistinguishable at the point where the tool is chosen.
 ## Why the negative is not a finding
 
 `negative/app.py` uses the **same `agent_turn()` function** as the
-vulnerable variant: no provenance filter, all instructions passed to
-the tool. The code shape looks like a finding and the Semgrep rule
-fires on it.
+vulnerable variant: instructions from retrieved documents are
+collected and passed to the tool with the same authority as user
+instructions. A code-pattern matcher cannot distinguish the two.
 
 It is not a finding here because the `EmailTool` is constructed with
 `allowed_recipients={PARTNER_ADDRESS}`. The agent is fooled by the
-injected instruction, but the tool refuses to send to an address
-outside the allowlist. No email leaves the system, so the effect that
-makes this excessive agency does not occur.
+injected instruction; the tool refuses to send outside the allowlist.
+No email leaves the system, so the effect that makes this excessive
+agency does not occur.
+
+The safety lives in the tool configuration, not the agent. The only
+functional difference from the vulnerable variant is the tool
+construction in `main()`.
 
 This becomes a finding the moment the tool is configured without an
-allowlist, which is exactly what the vulnerable variant models.
+allowlist, or the allowlist is widened to include the attacker's
+address, which is exactly what the vulnerable variant models.
 
 ## Verification
 uv run python -m scenarios.agency_retrieved_doc.vulnerable.app

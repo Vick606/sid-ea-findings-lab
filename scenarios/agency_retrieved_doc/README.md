@@ -15,7 +15,7 @@ outbound `send_email` call.
 
 The trust boundary is **provenance**: retrieved content should not be
 able to select an outbound communication tool. The user can name any
-recipient; only the user can.
+recipient. Only the user can.
 
 ## Root cause
 
@@ -55,6 +55,31 @@ allowlist, or the allowlist is widened to include the attacker's
 address, which is exactly what the vulnerable variant models.
 
 ## Verification
+
+```
 uv run python -m scenarios.agency_retrieved_doc.vulnerable.app
+```
 
 Expected: one `LEAK` line for `attacker@evil.example`.
+
+## SAST
+
+Semgrep rule: `sast/ea_tool_no_provenance_check.yaml`
+
+Expected behavior against this scenario's variants:
+
+| Variant | Rule fires? | Why |
+|---|---|---|
+| `vulnerable/` | **Yes** | Retrieved-doc instructions reach the tool unfiltered |
+| `fixed/` | No | Filters `source == "user_input"` before tool selection |
+| `negative/` | **Yes** | Identical `agent_turn()` — documented false positive |
+
+The negative is a false positive because static analysis cannot see
+the tool's recipient allowlist. The deterministic tests are what
+distinguish the two cases. See `WHY_NOT_A_FINDING.md`.
+
+Verify:
+
+```
+uvx semgrep --config sast/ea_tool_no_provenance_check.yaml scenarios/agency_retrieved_doc/
+```

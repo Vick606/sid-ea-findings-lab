@@ -53,3 +53,11 @@ actors:
     purpose: personal_assistant
     permitted_recipients: [rasmus]
     document_acl: tenant_a_only
+
+  tenant_a_sharing_agent:
+    identity: user
+    tenant: tenant_a
+    scopes: [agent:act, mail:send]
+    purpose: share_summaries
+    permitted_recipients: [user_designated]
+    document_acl: tenant_a_only

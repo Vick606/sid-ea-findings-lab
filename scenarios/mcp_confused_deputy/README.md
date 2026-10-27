@@ -29,8 +29,8 @@ arguments can select another user's root.
 | Variant | Behavior |
 |---|---|
 | `vulnerable/` | `read_file(user_id, path)` trusts the argument |
-| `fixed/` | `read_file(path)` ignores any `user_id` argument and uses the bound principal |
-| `negative/` | Same vulnerable signature, but the server is constructed with a per-user store and rejects mismatched `user_id` |
+| `fixed/` | `read_file(path)` uses the bound principal, no `user_id` parameter |
+| `negative/` | Same vulnerable signature, but the server is constructed with a per-user store |
 
 ## Why the negative is not a finding
 

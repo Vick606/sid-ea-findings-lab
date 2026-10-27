@@ -34,14 +34,23 @@ arguments can select another user's root.
 
 ## Why the negative is not a finding
 
-`negative/server.py` uses the same `read_file_impl` that trusts the
-`user_id` argument. The code shape is identical to the vulnerable
-variant. It is safe because the server is constructed per-user and
-the tool rejects any `user_id` that does not match the principal
-bound at construction.
+`negative/server.py` uses the **same `read_file_impl()` function** as
+the vulnerable variant: `user_id` comes from the tool arguments, the
+principal is accepted but not consulted for authorization. A
+code-pattern matcher cannot distinguish the two.
 
-This becomes a finding the moment the server is constructed with a
-shared store, which is exactly what the vulnerable variant models.
+It is not a finding here because the `FileStore` passed to the tool is
+constructed with only the principal's own root. When the agent passes
+`user_id="noor"`, `store.read("noor", ...)` returns `None` because the
+store has no entry for `noor`. There is no foreign root to read.
+
+The safety lives in the store construction, not the tool. The only
+functional difference from the vulnerable variant is what store the
+server was started with.
+
+This becomes a finding the moment the store is constructed with more
+than one user's root, which is exactly what the vulnerable variant
+models.
 
 ## CVE framing
 

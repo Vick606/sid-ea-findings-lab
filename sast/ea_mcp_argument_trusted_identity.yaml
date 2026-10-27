@@ -1,0 +1,40 @@
+rules:
+  - id: ea-mcp-argument-trusted-identity
+    languages: [python]
+    severity: HIGH
+    message: |
+      A function takes `user_id` (or similar identity) as a parameter
+      and passes it unchanged to a data access call. If the caller can
+      supply that argument, the function performs authorization using
+      a value the caller controls. This is the confused-deputy shape:
+      the correct identity is available at the session layer, and the
+      function reads it from the request instead.
+
+      This rule matches read_file_impl() in both the vulnerable and
+      the negative variant of scenario 04. The negative is a
+      documented false positive: it uses an identical function but a
+      per-user store, which static analysis cannot see. See
+      scenarios/mcp_confused_deputy/WHY_NOT_A_FINDING.md.
+
+      The fixed variant removes `user_id` from the function signature
+      entirely, so this rule does not fire.
+
+      CWE-441, CWE-639, CWE-863. OWASP LLM06:2025.
+    metadata:
+      category: security
+      owasp:
+        - "A01:2021 - Broken Access Control"
+      cwe:
+        - "CWE-441: Unintended Proxy or Intermediary ('Confused Deputy')"
+        - "CWE-639: Authorization Bypass Through User-Controlled Key"
+        - "CWE-863: Incorrect Authorization"
+      confidence: MEDIUM
+      references:
+        - "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+        - "https://cwe.mitre.org/data/definitions/441.html"
+      scenario: "scenarios/mcp_confused_deputy"
+    patterns:
+      - pattern: |
+          def $FUNC(..., user_id, ..., $STORE, ...):
+              ...
+              $STORE.read(user_id, ...)

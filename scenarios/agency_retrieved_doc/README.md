@@ -72,7 +72,7 @@ Expected behavior against this scenario's variants:
 |---|---|---|
 | `vulnerable/` | **Yes** | Retrieved-doc instructions reach the tool unfiltered |
 | `fixed/` | No | Filters `source == "user_input"` before tool selection |
-| `negative/` | **Yes** | Identical `agent_turn()` — documented false positive |
+| `negative/` | **Yes** | Identical `agent_turn()`, documented false positive |
 
 The negative is a false positive because static analysis cannot see
 the tool's recipient allowlist. The deterministic tests are what

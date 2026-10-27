@@ -61,3 +61,13 @@ actors:
     purpose: share_summaries
     permitted_recipients: [user_designated]
     document_acl: tenant_a_only
+  
+  tenant_a_mcp_user:
+    identity: rasmus
+    tenant: tenant_a
+    scopes: [mcp:read]
+    purpose: agent_file_access
+    permitted_recipients: [rasmus]
+    document_acl: tenant_a_only
+
+

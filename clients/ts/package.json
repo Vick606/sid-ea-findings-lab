@@ -1,0 +1,19 @@
+{
+  "name": "confused-deputy-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "vulnerable": "node dist/client.js vulnerable",
+    "fixed": "node dist/client.js fixed",
+    "negative": "node dist/client.js negative"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

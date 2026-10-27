@@ -8,9 +8,10 @@ Every scenario ships a vulnerable implementation, a fixed version, and a hard ne
 
 [![License: AGPL v3 + CC BY-NC-SA 4.0](https://img.shields.io/badge/License-AGPL_v3_%2B_CC_BY--NC--SA_4.0-blue.svg)](LICENSING.md)
 [![Python 3.14+](https://img.shields.io/badge/python-3.14+-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-26_passing-brightgreen.svg)](#validation)
+[![Tests](https://img.shields.io/badge/tests-27_passing-brightgreen.svg)](#validation)
 [![OWASP LLM](https://img.shields.io/badge/OWASP_LLM-LLM02_%2F_LLM06-purple)](https://genai.owasp.org/llm-top-10/)
 [![Semgrep](https://img.shields.io/badge/semgrep-taint_mode-red)](sast/)
+[![MCP](https://img.shields.io/badge/MCP-stdio_client-blue)](clients/ts/)
 
 </div>
 
@@ -86,15 +87,15 @@ Plus `finding.yaml`, `trace.md`, `WHY_NOT_A_FINDING.md`, and a scenario README.
 | 01 | [Cross-tenant RAG leak](scenarios/tenant_leak/) | SID | LLM02 | ✅ Shipped |
 | 02 | [Cross-user memory bleed](scenarios/memory_bleed/) | SID | LLM02 | ✅ Shipped |
 | 03 | [Retrieved-doc to outbound tool call](scenarios/agency_retrieved_doc/) | EA | LLM06 | ✅ Shipped |
-| 04 | MCP confused deputy | EA | LLM06 | Planned |
+| 04 | [MCP confused deputy](scenarios/mcp_confused_deputy/) | EA | LLM06 | ✅ Shipped |
 
 ## Why the hard negatives matter
 
 A naive non-finding differs from the vulnerable case in an obvious way. That is not a test of judgment. The negatives here share the vulnerable code **verbatim** and are safe only because of a deployment assumption.
 
-In scenario 01, the negative's `retrieve()` is byte-for-byte identical to the vulnerable variant's. In scenario 02, the negative's `agent_turn()` is byte-for-byte identical to the vulnerable variant's. In scenario 03, the same is true of `agent_turn()`. A code-pattern matcher cannot tell them apart. That is documented, tested, and the reason the deterministic tests exist.
+In scenario 01, the negative's `retrieve()` is byte-for-byte identical to the vulnerable variant's. In scenario 02, the negative's `agent_turn()` is byte-for-byte identical to the vulnerable variant's. In scenario 03, the same is true of `agent_turn()`. In scenario 04, the negative's `read_file_impl()` is byte-for-byte identical to the vulnerable variant's. A code-pattern matcher cannot tell them apart. That is documented, tested, and the reason the deterministic tests exist.
 
-See [`WHY_NOT_A_FINDING.md`](scenarios/tenant_leak/WHY_NOT_A_FINDING.md) in scenarios [01](scenarios/tenant_leak/WHY_NOT_A_FINDING.md), [02](scenarios/memory_bleed/WHY_NOT_A_FINDING.md), and [03](scenarios/agency_retrieved_doc/WHY_NOT_A_FINDING.md).
+See [`WHY_NOT_A_FINDING.md`](scenarios/tenant_leak/WHY_NOT_A_FINDING.md) in scenarios [01](scenarios/tenant_leak/WHY_NOT_A_FINDING.md), [02](scenarios/memory_bleed/WHY_NOT_A_FINDING.md), [03](scenarios/agency_retrieved_doc/WHY_NOT_A_FINDING.md), and [04](scenarios/mcp_confused_deputy/WHY_NOT_A_FINDING.md).
 
 ## Why traditional taint analysis doesn't transfer
 
@@ -111,8 +112,22 @@ Semgrep rules in [`sast/`](sast/) run in taint mode and are validated against al
 | [`sid_rag_no_post_rerank_acl.yaml`](sast/sid_rag_no_post_rerank_acl.yaml) | ✅ | ❌ | ✅ (documented FP) |
 | [`sid_memory_no_user_binding.yaml`](sast/sid_memory_no_user_binding.yaml) | ✅ | ❌ | ✅ (documented FP) |
 | [`ea_tool_no_provenance_check.yaml`](sast/ea_tool_no_provenance_check.yaml) | ✅ | ❌ | ✅ (documented FP) |
+| [`ea_mcp_argument_trusted_identity.yaml`](sast/ea_mcp_argument_trusted_identity.yaml) | ✅ | ❌ | ✅ (documented FP) |
 
 The rules catch **code shape**; the tests catch **deployment context**. That trade-off is exactly what a GenAI security evaluation engineer negotiates.
+
+## MCP and cross-language
+
+Scenario 04 ships a TypeScript MCP client in [`clients/ts/`](clients/ts/) that spawns the Python server over stdio and calls `read_file` with a foreign `user_id`. The vulnerability and its fix are observable through the MCP protocol from any language. The fixed variant rejects the call at the schema boundary because the tool has no `user_id` parameter, so the defense is structural rather than a runtime check.
+
+```bash
+cd clients/ts
+pnpm install
+pnpm run build
+pnpm run vulnerable   # leaks
+pnpm run fixed        # schema rejection
+pnpm run negative     # not found
+```
 
 ## Install and test
 
@@ -124,6 +139,7 @@ uv run pytest -v
 uv run python -m scenarios.tenant_leak.vulnerable.app             # reproduces scenario 01
 uv run python -m scenarios.memory_bleed.vulnerable.app            # reproduces scenario 02
 uv run python -m scenarios.agency_retrieved_doc.vulnerable.app    # reproduces scenario 03
+uv run python -m scenarios.mcp_confused_deputy.vulnerable.agent   # reproduces scenario 04
 uvx semgrep --config sast/ scenarios/
 ```
 
@@ -134,7 +150,7 @@ No Docker. No model downloads. No API keys. Tests use fixed vectors and determin
 Every commit runs:
 
 ```bash
-uv run pytest -q              # 26 passing
+uv run pytest -q              # 27 passing
 uv run ruff check .
 uv run ruff format --check .
 uv run pyright
@@ -147,9 +163,9 @@ uvx semgrep --config sast/ scenarios/
 
 This is a **small, hand-built corpus**, not a benchmark.
 
-**Good at:** structured findings consumable by triage tools; hard negatives that test judgment; auditable traces; reproducible with zero network; Semgrep rules that discriminate by code shape.
+**Good at:** structured findings consumable by triage tools; hard negatives that test judgment; auditable traces; reproducible with zero network; Semgrep rules that discriminate by code shape; one end-to-end MCP example in a non-Python client.
 
-**Weak at:** scale (four scenarios, not four hundred); automation (traces are hand-written); coverage (no encoded attacks, multi-turn drift, or chained tool calls); multi-agent scenarios.
+**Weak at:** scale (four scenarios, not four hundred); automation (traces are hand-written); coverage (no encoded attacks, multi-turn drift, or chained tool calls); multi-agent scenarios; MCP is exercised over stdio only, not HTTP or remote transport.
 
 **Known trade-off:** each Semgrep rule fires on the corresponding hard negative. Not a bug. SAST sees code, not deployment. A rule that stayed silent would have to encode the deployment assumption, becoming brittle in the other direction.
 
@@ -164,7 +180,8 @@ sid-ea-findings-lab/
 ├── scenarios/
 │   ├── tenant_leak/           # scenario 01
 │   ├── memory_bleed/          # scenario 02
-│   └── agency_retrieved_doc/  # scenario 03
+│   ├── agency_retrieved_doc/  # scenario 03
+│   └── mcp_confused_deputy/   # scenario 04
 │       ├── vulnerable/        # the finding
 │       ├── fixed/             # one-line fix
 │       ├── negative/          # hard negative
@@ -173,6 +190,7 @@ sid-ea-findings-lab/
 │       ├── trace.md
 │       ├── WHY_NOT_A_FINDING.md
 │       └── README.md
+├── clients/ts/                # TypeScript MCP client (scenario 04)
 ├── sast/                      # Semgrep rules
 ├── tests/                     # schema + corpus validation
 ├── LICENSING.md
@@ -186,14 +204,14 @@ Split license. See [LICENSING.md](LICENSING.md).
 
 | Artifact | License |
 |---|---|
-| Code (`*.py`, `sast/*.yaml`) | AGPL-3.0-or-later |
+| Code (`*.py`, `*.ts`, `sast/*.yaml`) | AGPL-3.0-or-later |
 | Findings corpus, traces, docs | CC BY-NC-SA 4.0 |
 
 The code is a teaching aid that should stay open. The annotated vulnerable patterns should not be packaged commercially without the defensive context. No commercial license is offered for the corpus.
 
 ## Status
 
-Stage 4 complete. Scenarios 01, 02, and 03 ship end to end. Stage 5 adds scenario 04 (MCP confused deputy). Stage 6 adds a calibration set and CI.
+Stage 5 complete. Scenarios 01 through 04 ship end to end, including a TypeScript MCP client. Stage 6 adds a calibration set, a CI gate, and a devcontainer.
 
 ---
 

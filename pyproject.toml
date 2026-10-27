@@ -7,10 +7,10 @@ authors = [
     { name = "Victor", email = "vickoch20@gmail.com" }
 ]
 requires-python = ">=3.14"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE", "LICENSE-CORPUS"]
 dependencies = [
     "fastmcp>=4",
-    "langchain>=1.2.8",
-    "langchain-community>=0.4.2",
     "numpy>=2.5.3",
     "pydantic>=2.13.0",
     "pyyaml>=6.0.3",

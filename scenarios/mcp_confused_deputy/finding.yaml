@@ -1,0 +1,77 @@
+id: EA-2026-002
+class: EA
+owasp_llm: "LLM06:2025"
+cwe: [CWE-441, CWE-639, CWE-863]
+title: MCP confused deputy via caller-supplied identity in tool arguments
+
+actor:
+  identity: rasmus
+  tenant: tenant_a
+  scopes: [mcp:read]
+  purpose: agent_file_access
+  permitted_recipients: [rasmus]
+  document_acl: tenant_a_only
+
+trust_boundaries:
+  - name: principal_selection
+    from_actor: agent
+    to_actor: mcp_server
+    expected_invariant: "authorization uses the authenticated principal bound to the server, not an argument from the caller"
+    violated: true
+
+flow:
+  source:
+    kind: retrieved_doc
+    location: "scenarios/mcp_confused_deputy/common.py:92"
+    taint: untrusted
+  propagation:
+    - step: extract
+      location: "scenarios/mcp_confused_deputy/vulnerable/agent.py:40"
+      note: "instruction carries user_id=noor from retrieved text"
+    - step: tool_call
+      location: "scenarios/mcp_confused_deputy/vulnerable/agent.py:46"
+      note: "user_id forwarded unchanged into the MCP tool call"
+    - step: authorize
+      location: "scenarios/mcp_confused_deputy/vulnerable/server.py:39"
+      note: "store.read uses the argument user_id, not the bound principal"
+  sink:
+    kind: tool_call
+    location: "scenarios/mcp_confused_deputy/vulnerable/server.py:39"
+    action: read_file
+
+root_cause: |
+  The MCP server is bound to an authenticated principal at process
+  start. Its read_file tool accepts user_id as a tool argument and
+  uses that argument to select the file root. The bound principal is
+  never consulted for the authorization decision. Any caller that can
+  shape tool arguments can select another user's root. The server is
+  a confused deputy: it acts on data it cannot fully vouch for, while
+  the correct identity is available to it.
+
+control:
+  present: [bound_principal_at_startup]
+  missing: [principal_from_session_used_for_authz]
+  bypass: user_id_from_tool_arguments
+
+severity: HIGH
+severity_rationale: |
+  Cross-user file disclosure through an MCP tool. The agent is
+  authenticated and holds mcp:read, but the file it reads belongs to
+  another user. The exfiltration is silent: no error, no anomaly, and
+  the tool result is indistinguishable from a legitimate read at the
+  protocol layer.
+residual_risk: |
+  The fixed variant removes the user_id parameter from the tool
+  schema. That closes the path at the contract level, but a future
+  tool with a similar shape (accepting tenant, org, or account IDs
+  from callers) could reintroduce it. A policy that enumerates which
+  tool arguments are identity-bearing, and rejects them at the MCP
+  transport boundary, is the natural next step. Also out of scope:
+  the agent itself is still fooled by the retrieved document into
+  asking for comp.md. The fix prevents the read, not the steering.
+
+evidence:
+  test: "scenarios/mcp_confused_deputy/tests/test_mcp_confused_deputy.py::test_vulnerable_reads_foreign_root"
+  semgrep: "sast/ea_mcp_argument_trusted_identity.yaml"
+  diff: "vulnerable/server.py:32 vs fixed/server.py:32"
+  negative: "scenarios/mcp_confused_deputy/negative/server.py"

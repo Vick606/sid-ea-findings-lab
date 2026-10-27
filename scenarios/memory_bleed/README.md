@@ -10,7 +10,7 @@ A stateful agent stores conversation memory keyed by `session_id`
 only. The memory store does not bind entries to the user who wrote
 them. Two users in the same tenant sharing one store can read each
 other's memory by supplying the same `session_id`. The trust boundary
-is **user-level within a tenant** — different from scenario 01, which
+is **user-level within a tenant**, different from scenario 01, which
 crossed a tenant boundary.
 
 ## Root cause
@@ -18,7 +18,7 @@ crossed a tenant boundary.
 The control that matters here is **user binding**: every memory read
 should verify that the requesting user owns the session. That control
 is absent. The `session_id` is treated as the sole credential, but
-session IDs are not secrets — they are identifiers. A user who knows
+session IDs are not secrets. They are identifiers. A user who knows
 or guesses another user's session ID reads that user's memory.
 
 ## Variants
@@ -42,29 +42,35 @@ difference from the vulnerable variant is the store construction in
 `main()`.
 
 This becomes a finding the moment the deployment serves more than one
-user from a single store instance — which is exactly what the
+user from a single store instance, which is exactly what the
 vulnerable variant models.
 
 ## Verification
-uv run python -m scenarios.memory_bleed.vulnerable.app
 
-Expected: one LEAK line — Rasmus reads Noor's stored SSN.
+```
+uv run python -m scenarios.memory_bleed.vulnerable.app
+```
+
+Expected: one LEAK line. Rasmus reads Noor's stored SSN.
 
 ## SAST
 
-Semgrep rule: `sast/ea_tool_no_provenance_check.yaml`
+Semgrep rule: `sast/sid_memory_no_user_binding.yaml`
 
 Expected behavior against this scenario's variants:
 
 | Variant | Rule fires? | Why |
 |---|---|---|
-| `vulnerable/` | **Yes** | Retrieved-doc instructions reach the tool unfiltered |
-| `fixed/` | No | Filters `source == "user_input"` before tool selection |
+| `vulnerable/` | **Yes** | `store.load()` result returned without a user filter |
+| `fixed/` | No | Re-applies the user predicate before return |
 | `negative/` | **Yes** | Identical `agent_turn()` — documented false positive |
 
 The negative is a false positive because static analysis cannot see
-the tool's recipient allowlist. The deterministic tests are what
-distinguish the two cases. See `WHY_NOT_A_FINDING.md`.
+the deployment context (per-user stores). The deterministic tests are
+what distinguish the two cases. See `WHY_NOT_A_FINDING.md`.
 
 Verify:
-uvx semgrep --config sast/ea_tool_no_provenance_check.yaml scenarios/agency_retrieved_doc/
+
+```
+uvx semgrep --config sast/sid_memory_no_user_binding.yaml scenarios/memory_bleed/
+```
